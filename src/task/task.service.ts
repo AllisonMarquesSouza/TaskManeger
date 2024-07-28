@@ -1,56 +1,76 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { FindAllParameters, TaskDto } from './task.dto';
+import { ConflictException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { createTaskFromDtoPost, TaskDtoPost, TaskStatusEnum } from './task.dto.post';
+import { createTaskFromDtoPut, TaskDtoPut } from './task.dto.put';
+import { Task } from 'src/db/entities/task.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
-@Injectable() //diz que a classe pode ser injetada as dependencias...
+@Injectable()
 export class TaskService {
-    private tasks: TaskDto[] = [];
 
-    create(task: TaskDto) {
-        this.tasks.push(task)
-    }
-    findAll(params: FindAllParameters): TaskDto[] {
-        return this.tasks.filter(t => {
-            let match = true;
+    constructor(
+        @InjectRepository(Task)
+        private readonly taskRepository: Repository<Task>
+    ) { }
 
-            if (params.title != undefined && !t.title.includes(params.title)) {
-                match = false
-            }
-
-            if (params.status != undefined && t.title.includes(params.title)) {
-                match = false
-            }
-            return match
+    async create(taskDto: TaskDtoPost): Promise<Task> {
+        const taskAlreadyRegister = await this.taskRepository.findOne({
+            where: { title: taskDto.title }
         })
+        if (taskAlreadyRegister) {
+            throw new ConflictException(`Task with ${taskDto.title} already registered`);
+        }
+
+        const converToTask = createTaskFromDtoPost(taskDto);
+        converToTask.status = TaskStatusEnum.TO_DO;
+        const saveTask = await this.taskRepository.save(converToTask);
+        return saveTask;
     }
 
-    findById(id: string): TaskDto {
-        const foundTask = this.tasks.find((task) => task.id === id);
 
-        if (foundTask) {
-            return foundTask;
+    async findAll(): Promise<Task[]> {
+        const mapedAll = await this.taskRepository.find();
+        return mapedAll;
+    }
+
+
+    async findById(id: number): Promise<Task> {
+        const foundTask = await this.taskRepository.findOne({
+            where: { id: id }
+        })
+
+        if (!foundTask) {
+            throw new HttpException(`Task with ${id} not found`, HttpStatus.NOT_FOUND);
         }
-        //formas de usar execao no next , ele ja vem com umas personalizadas que ja lanca o 404 automatico, mas posso personalizar...
-        // throw new NotFoundException(`Task with ${id} not found`)
-
-        //personalizada: (message, httpStatus ou o codigo diretamente)
-        //Boas praticas usar o HttpStatus-> porque especifica pelo nome e deixa mais legivel 
-        throw new HttpException(`Task with ${id} not found`, HttpStatus.NOT_FOUND);
+        return foundTask;
 
     }
-    update(task: TaskDto): HttpStatus {
-        const foundTask = this.tasks.findIndex((t) => t.id === task.id)
-        if (foundTask >= 0) {
-            this.tasks[foundTask] = task;
-            return HttpStatus.NO_CONTENT;
+    async update(taskDtoPut: TaskDtoPut): Promise<void> {
+        const foundTask = await this.taskRepository.findOne({
+            where: { id: taskDtoPut.id }
+        })
+        if (!foundTask) {
+            throw new HttpException(`Task with ID: ${taskDtoPut.id} not found, not is possible update`, HttpStatus.BAD_REQUEST);
         }
-        throw new HttpException(`Task with ${task.id} not found, not is possible update`, HttpStatus.BAD_REQUEST);
+        const convertToTask = createTaskFromDtoPut(taskDtoPut);
+        const result = await this.taskRepository.update(taskDtoPut.id, convertToTask);
+
+        if (result.affected === 0) {
+            throw new HttpException(`Task with ID: ${taskDtoPut.id} not updated`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
     }
-    delete(id: string): void {
-        const foundIndex = this.tasks.findIndex((t) => t.id === id)
-        if (foundIndex >= 0) {
-            this.tasks.splice(foundIndex, 1)
-            return;
+    async delete(id: number): Promise<void> {
+        const foundTask = await this.findById(id);
+        if (!foundTask) {
+            throw new HttpException(`Task with ${id} not found , not possible delete`, HttpStatus.BAD_REQUEST);
         }
-        throw new HttpException(`Task with ${id} not found`, HttpStatus.NOT_FOUND);
+
+        const result = await this.taskRepository.delete(foundTask);
+
+        if (result.affected === 0) {
+            throw new HttpException(`Task with ID: ${id} not deleted`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
     }
 }
