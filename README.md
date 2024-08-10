@@ -1,11 +1,12 @@
-
 Task Management API
-Esta API REST foi desenvolvida com NestJS e TypeORM para gerenciar tarefas. Ela permite criar, atualizar, excluir e buscar tarefas, e é protegida por autenticação JWT e criptografia de senhas com Bcrypt. Além do serviço de Usuario , onde podemos criar um usuário e fazer login com ele e receber o TOKEN JWT para fazer as requisições.
 
-Tecnologias Utilizadas: 
-* TypeScript: Linguagem para desenvolvimento de aplicações.
-* NestJS: Framework para Node.js que utiliza TypeScript.
-* TypeORM: Biblioteca ORM para interagir com bancos de dados.
-* MySQL: Sistema de gerenciamento de banco de dados relacional.
-* JWT (JSON Web Token): Mecanismo de autenticação.
-* Bcrypt: Biblioteca para criptografia de senhas.
+This REST API was developed with NestJS and TypeORM to manage tasks. It allows you to create, update, delete, and retrieve tasks, and is protected by JWT authentication and password encryption with Bcrypt. Additionally, it includes a user service where you can create a user, log in, and receive a JWT token to make requests.
+
+Technologies Used:
+
+- TypeScript: Language for application development.
+- NestJS: Framework for Node.js that uses TypeScript.
+- TypeORM: ORM library for interacting with databases.
+- MySQL: Relational database management system.
+- JWT (JSON Web Token): Authentication mechanism.
+- Bcrypt: Library for password encryption.
